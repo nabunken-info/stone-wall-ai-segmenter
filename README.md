@@ -6,7 +6,7 @@ ImVisionLabs株式会社
 
 　本アプリケーションは、テクスチャ付きの3次元メッシュモデルから石垣の正面画像を生成し、AIによって石材の領域を抽出するWindows向けアプリケーションです。抽出した輪郭を元の3次元座標へ戻し、CADで利用できるDXF形式で保存します。
 
-動作確認用のサンプルデータは、[`SampleData/sample-osakacastle/sample-osakacastle/`](SampleData/sample-osakacastle/sample-osakacastle/) に格納しています。サンプルデータの参照元は、奈良文化財研究所の[石垣BIMプロジェクト](https://www.nabunken.go.jp/research/stonewallbim.html)です。
+動作確認用のサンプルデータは、[`SampleData/sample-osakacastle/`](SampleData/sample-osakacastle/) に格納しています。サンプルデータの参照元は、奈良文化財研究所の[石垣BIMプロジェクト](https://www.nabunken.go.jp/research/stonewallbim.html)です。
 
 アプリケーションの配布ファイルは、このリポジトリの[Releases](https://github.com/nabunken-info/stone-wall-ai-segmenter/releases)から入手してください。
 
