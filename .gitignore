@@ -1,0 +1,17 @@
+# MATLAB temporary and generated files
+*.asv
+*.m~
+*.mexw64
+slprj/
+codegen/
+
+# Packaged application outputs
+for_redistribution/
+for_testing/
+distrib/
+archive/
+
+# Operating-system metadata
+Thumbs.db
+Desktop.ini
+.DS_Store
