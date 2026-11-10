@@ -6,9 +6,7 @@ ImVisionLabs株式会社
 
 　本アプリケーションは、テクスチャ付きの3次元メッシュモデルから石垣の正面画像を生成し、AIによって石材の領域を抽出するWindows向けアプリケーションです。抽出した輪郭を元の3次元座標へ戻し、CADで利用できるDXF形式で保存します。
 
-動作確認用のサンプルデータは、[`SampleData/sample-osakacastle/`](SampleData/sample-osakacastle/) に格納しています。サンプルデータの参照元は、奈良文化財研究所の[石垣BIMプロジェクト](https://www.nabunken.go.jp/research/stonewallbim.html)です。
-
-アプリケーションの配布ファイルは、このリポジトリの[Releases](https://github.com/nabunken-info/stone-wall-ai-segmenter/releases)から入手してください。
+　動作確認用のサンプルデータは、[`SampleData/sample-osakacastle/`](SampleData/sample-osakacastle/) に格納しています。サンプルデータの参照元は、奈良文化財研究所の[石垣BIMプロジェクト](https://www.nabunken.go.jp/research/stonewallbim.html)です。アプリケーションの配布ファイルは、このリポジトリの[Releases](https://github.com/nabunken-info/stone-wall-ai-segmenter/releases)から入手してください。
 
 ### 1.1 投影版の処理の流れ
 
@@ -46,18 +44,17 @@ ImVisionLabs株式会社
 
 ### 2.4 フォルダーの配置
 
-　選択する入力フォルダーの直下にOBJを1件だけ置きます。OBJが複数ある場合は、対象ごとにフォルダーを分けてください。サブフォルダーの中だけにOBJを置いても検出されません。配置例を以下に示します。
+　選択する入力フォルダーの直下には、OBJファイルを1件だけ置きます。OBJが複数ある場合は、対象ごとにフォルダーを分けてください。OBJ、MTL、テクスチャ画像は、まず同じ階層に置くと参照関係を確認しやすくなります。サブフォルダーの中だけにOBJを置いても検出されません。配置例を以下に示します。
 
 ```text
 入力フォルダー/
   wall.obj
   wall.mtl
-  textures/
-    texture_01.jpg
-    texture_02.png
+  texture_01.jpg
+  texture_02.png
 ```
 
-　上の例では、wall.objがwall.mtlを参照し、wall.mtlがtextures内の画像を参照します。画像をサブフォルダーに置く場合も、参照先の相対パスを保ってください。
+　上の例では、wall.objがwall.mtlを参照し、wall.mtlが同じフォルダー内のtexture_01.jpgおよびtexture_02.pngを参照します。画像をサブフォルダーに置く場合も、MTLに記載された画像への相対パスを保ってください。
 
 ## 3 インストールと基本操作
 
