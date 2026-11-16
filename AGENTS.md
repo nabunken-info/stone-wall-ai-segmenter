@@ -43,7 +43,7 @@
 
 | 日本語 | 英語 |
 |---|---|
-| 石垣AIセグメンター | Ishigaki AI Segmenter |
+| 石垣AIセグメンター | Stone Wall AI Segmenter |
 | 正面投影画像 | frontal projection image |
 | 正投影画像 | orthographic image |
 | 石材領域 | stone regions |

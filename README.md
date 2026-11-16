@@ -1,4 +1,4 @@
-# Ishigaki AI Segmenter
+# Stone Wall AI Segmenter
 
 **English** | [日本語](README_JP.md)
 
@@ -6,7 +6,7 @@ ImVisionLabs Inc.
 
 ## 1 Introduction
 
-Ishigaki AI Segmenter is a Windows application that extracts individual stone boundaries from textured three-dimensional mesh models of stone walls. It generates a frontal projection image, segments stone regions using AI, reconstructs their boundaries in the original three-dimensional coordinate system, and exports them in Drawing Exchange Format (DXF) for use in CAD software.
+Stone Wall AI Segmenter is a Windows application that extracts individual stone boundaries from textured three-dimensional mesh models of stone walls. It generates a frontal projection image, segments stone regions using AI, reconstructs their boundaries in the original three-dimensional coordinate system, and exports them in Drawing Exchange Format (DXF) for use in CAD software.
 
 Sample data for trying the application are available in [`SampleData/sample-osakacastle/`](SampleData/sample-osakacastle/). The sample data come from the [Stone Wall BIM Project](https://www.nabunken.go.jp/research/stonewallbim.html) at the Nara National Research Institute for Cultural Properties. Download the application from this repository's [Releases](https://github.com/nabunken-info/stone-wall-ai-segmenter/releases) page.
 
@@ -75,7 +75,7 @@ The application can run on a CPU. To use a GPU, you need a GPU and driver compat
 1. Run `StoneSegmentationApp_Installer.exe`.
 2. Follow the installer instructions to choose an installation location and install the matching MATLAB Runtime.
 3. Once installation is complete, launch `StoneSegmentationApp.exe`.
-4. Wait for the Ishigaki AI Segmenter window to appear. The first launch may take some time.
+4. Wait for the Stone Wall AI Segmenter window to appear. The first launch may take some time.
 
 ### 3.2 Select the input and output folders
 
@@ -83,7 +83,7 @@ Figure 3 shows the application interface in English. Select the input and output
 
 ![English application interface with folder selectors, main settings, segmentation settings, and the Run analysis button](README_images/app_main_screen_v2_1-en.png)
 
-Figure 3. Ishigaki AI Segmenter interface in English.
+Figure 3. Stone Wall AI Segmenter interface in English.
 
 1. Click **Select** next to **Input folder (one OBJ file)**.
 2. Select the input folder prepared as described in Section 2.
