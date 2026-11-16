@@ -1,192 +1,189 @@
-# 石垣AIセグメンターについて
+# Ishigaki AI Segmenter
 
-ImVisionLabs株式会社
+**English** | [日本語](README_JP.md)
 
-## 1 はじめに
+ImVisionLabs Inc.
 
-　本アプリケーションは、テクスチャ付きの3次元メッシュモデルから石垣の正面画像を生成し、AIによって石材の領域を抽出するWindows向けアプリケーションです。抽出した輪郭を元の3次元座標へ戻し、CADで利用できるDXF形式で保存します。
+## 1 Introduction
 
-　動作確認用のサンプルデータは、[`SampleData/sample-osakacastle/`](SampleData/sample-osakacastle/) に格納しています。サンプルデータの参照元は、奈良文化財研究所の[石垣BIMプロジェクト](https://www.nabunken.go.jp/research/stonewallbim.html)です。アプリケーションの配布ファイルは、このリポジトリの[Releases](https://github.com/nabunken-info/stone-wall-ai-segmenter/releases)から入手してください。
+Ishigaki AI Segmenter is a Windows application that extracts individual stone boundaries from textured three-dimensional mesh models of stone walls. It generates a frontal projection image, segments stone regions using AI, reconstructs their boundaries in the original three-dimensional coordinate system, and exports them in Drawing Exchange Format (DXF) for use in CAD software.
 
-### 1.1 投影版の処理の流れ
+Sample data for trying the application are available in [`SampleData/sample-osakacastle/`](SampleData/sample-osakacastle/). The sample data come from the [Stone Wall BIM Project](https://www.nabunken.go.jp/research/stonewallbim.html) at the Nara National Research Institute for Cultural Properties. Download the application from this repository's [Releases](https://github.com/nabunken-info/stone-wall-ai-segmenter/releases) page.
 
-1. OBJ、MTL、テクスチャ画像を読み込みます。
-2. 壁面を代表する平面を推定し、その面に正対した正投影画像を生成します。
-3. 正投影画像に対してSAMによる石材領域の抽出を行います。
-4. 画像とメッシュの対応を使い、輪郭を元の3次元座標に復元します。
-5. 確認用画像、3次元輪郭のDXF、解析条件と処理時間を記録したCSVなどを保存します。
+### 1.1 Frontal projection workflow
 
-### 1.2 試験版から変わった点
+1. Load an OBJ mesh, its MTL material file, and the associated texture images.
+2. Estimate a representative wall plane and generate an orthographic image facing that plane.
+3. Segment stone regions in the frontal projection image using the Segment Anything Model (SAM).
+4. Reconstruct the extracted boundaries in the original three-dimensional coordinate system using image-to-mesh correspondence information.
+5. Save preview images, a DXF file containing three-dimensional stone boundaries, and CSV files recording processing settings and times.
 
-　投影版は、展開されたテクスチャ画像を直接解析するのではなく、メッシュ上の模様を壁面の正面画像として再構成して解析します。そのため、石材がテクスチャ画像の継ぎ目にまたがっていても、元のメッシュ上で正しく貼られていれば、投影画像上では連続した見た目として扱えます。テクスチャを1枚にまとめる作業は必須ではありません。
+### 1.2 Changes from the trial version
 
-- 複数のテクスチャ画像を参照するOBJを扱えます。画像形式もPNGだけに限定されず、JPEGなどを利用できます。
-- 解析処理のためのCloudCompareのインストールや実行コマンド設定は不要です。
-- 一方、入力はあらかじめ対象の壁面だけに切り出してください。地面を含む城郭全体から目的の壁面を自動選択するアプリケーションではありません。
+The frontal projection version reconstructs a frontal view of the textured mesh and analyses that image, rather than processing the texture images directly. A stone that spans texture-image boundaries can therefore appear as a continuous region in the frontal projection image, provided that the textures are correctly mapped onto the original mesh. Combining the textures into a single image is optional.
 
+- OBJ files referencing multiple texture images are supported. Textures can be in JPEG and other supported image formats as well as PNG.
+- CloudCompare installation and command configuration are no longer required for analysis.
+- Crop the input model to the target wall surface before processing. The application does not automatically select a wall from a model of an entire castle site that includes surrounding ground.
 
-## 2 入力データの準備
+## 2 Prepare the input data
 
-### 2.1 対象の壁面だけを残す
+### 2.1 Crop the model to a single wall surface
 
-　メッシュ編集ソフトなどで、解析したい一つの壁面を切り出してください。広い地面、天端の水平面、背面、建物、樹木、別方向を向く壁面など、対象外の形状はできるだけ除去します。植生が壁面を覆っている場合、隠れた石材の形状を復元することはできません。
+Use mesh-editing software to isolate the wall surface you want to analyse. Remove unrelated geometry wherever possible, including large ground areas, horizontal surfaces at the top of the wall, rear surfaces, buildings, trees, and walls facing other directions. The application cannot reconstruct stones hidden behind vegetation.
 
+Figure 1 shows a mesh cropped to a single wall surface. Keep the target wall and remove the surrounding geometry before preparing the input folder.
 
-　一つの壁面だけに切り出したメッシュモデルの例を図1に示します。解析対象の壁面を残し、周囲の不要な形状を取り除いた状態で入力データを準備してください。
+![Stone-wall mesh cropped to a single target wall surface](README_images/single_wall_crop.png)
 
-![解析対象の一つの壁面だけに切り出した石垣のメッシュモデル](README_images/single_wall_crop.png)
+Figure 1. Example of a mesh cropped to a single wall surface.
 
-図1　一つの壁面だけに切り出したメッシュモデルの例
+### 2.2 Orientation and coordinate units
 
-### 2.2 向きと座標単位
+Prepare the model with the Z-axis aligned with the real-world vertical direction. The application uses this axis to determine the upward direction in the frontal projection image. Use metres as the coordinate unit so that the projected-area settings in m² correspond to the intended stone sizes.
 
-　Z軸が実世界の鉛直方向になるように準備してください。投影画像の上方向を決めるためにZ軸を使用します。DXFは入力OBJの座標系で出力されます。位置合わせに使用する元データも、同じ座標系・単位でそろえてください。
+The exported DXF preserves the coordinate system and units of the input OBJ. Any reference data used to align the results must use the same coordinate system and units.
 
-### 2.4 フォルダーの配置
+### 2.3 Input folder structure
 
-　選択する入力フォルダーの直下には、OBJファイルを1件だけ置きます。OBJが複数ある場合は、対象ごとにフォルダーを分けてください。OBJ、MTL、テクスチャ画像は、同じ階層に置いてください。サブフォルダーの中だけにOBJを置いても検出されません。配置例を以下に示します。
+Place exactly one OBJ file directly in the input folder. If you have multiple OBJ files, put each model in a separate folder. Keep the OBJ, MTL, and texture images at the same folder level. An OBJ stored only in a subfolder will not be detected.
 
 ```text
-入力フォルダー/
+input_folder/
   wall.obj
   wall.mtl
   texture_01.jpg
   texture_02.png
 ```
-　上の例では、wall.objがwall.mtlを参照し、wall.mtlが同じフォルダー内のtexture_01.jpgおよびtexture_02.pngを参照します。
 
-　サンプルデータのファイル配置を図2に示します。
+In this example, `wall.obj` references `wall.mtl`, which in turn references `texture_01.jpg` and `texture_02.png` in the same folder.
 
-![サンプルデータのフォルダー内容](README_images/sample_data_folder_contents.png)
+Figure 2 shows the sample data folder.
 
-図2　サンプルデータのファイル配置
+![Files in the sample data folder](README_images/sample_data_folder_contents.png)
 
+Figure 2. Sample data folder structure.
 
+## 3 Installation and basic operation
 
-## 3 インストールと基本操作
+### 3.1 System requirements and installation
 
-### 3.1 実行環境とインストール
+Use the Windows installer with the matching MATLAB Runtime R2026a. You do not need to purchase or install MATLAB itself. MATLAB Runtime provides the environment needed to run the application; the installer downloads it if required. An internet connection is needed for that download.
 
-　配布用Windowsインストーラーと、それに対応するMATLAB Runtime R2026aを使用します。MATLAB本体の購入・インストールは不要です。Runtimeはアプリを動かすための実行環境で、インストーラーから必要に応じて取得します。その際はインターネット接続が必要です。
+The application can run on a CPU. To use a GPU, you need a GPU and driver compatible with the distributed application's runtime environment. Memory requirements and processing time depend on the mesh size, image resolution, and segmentation settings.
 
-　CPUでの解析も可能です。GPUを使用する場合は、配布版の実行環境に対応したGPUとドライバーが必要です。必要なメモリ量や処理時間は、メッシュ規模、画像解像度、探索条件によって変わります。
+1. Run `StoneSegmentationApp_Installer.exe`.
+2. Follow the installer instructions to choose an installation location and install the matching MATLAB Runtime.
+3. Once installation is complete, launch `StoneSegmentationApp.exe`.
+4. Wait for the Ishigaki AI Segmenter window to appear. The first launch may take some time.
 
-1. 配布されたStoneSegmentationApp_Installer.exeを起動します。
-2. 画面の案内に従ってインストール先を指定し、対応するMATLAB Runtimeをインストールします。
-3. 完了後、インストールされたStoneSegmentationApp.exeを起動します。
-4. 「石垣AIセグメンター Ver. 2.1」の画面が表示されるまで待ちます。初回は準備に時間がかかることがあります。
+### 3.2 Select the input and output folders
 
-### 3.2 入力先と出力先を選ぶ
+Figure 3 shows the application interface in English. Select the input and output folders at the top, configure the settings in the middle, and click **Run analysis** at the bottom.
 
-　アプリの操作画面を図3に示します。画面上部で入力フォルダーと出力フォルダーを選び、中央で解析条件を設定した後、下部の「解析を実行」を押します。
+![English application interface with folder selectors, main settings, segmentation settings, and the Run analysis button](README_images/app_main_screen_v2_1-en.png)
 
-![入力・出力フォルダー、主要設定、セグメンテーションの設定、解析実行ボタンを備えたアプリの操作画面](README_images/app_main_screen_v2_1.png)
+Figure 3. Ishigaki AI Segmenter interface in English.
 
-図3　石垣AIセグメンターの操作画面
+1. Click **Select** next to **Input folder (one OBJ file)**.
+2. Select the input folder prepared as described in Section 2.
+3. Create a folder in which to save the results.
+4. Click **Select** next to **Output folder** and select that folder.
 
-1. 「入力フォルダー（OBJを1件含む）」の「選択」を押します。
-2. 第2章に従って準備した入力フォルダーを選択します。
-3. 結果の保存先フォルダーをあらかじめ作成します。
-4. 「出力フォルダー」の「選択」を押し、保存先を選択します。
+### 3.3 Configure and run the analysis
 
-### 3.3 条件を設定して実行する
+1. Review **Main settings** and **Segmentation settings**. See Section 4 for details.
+2. For the first run, start with **Tiled analysis** and a crop level of 1. Set the projected-area range to suit the sizes of the stones you want to extract.
+3. Click **Run analysis**. Input and settings controls are disabled during processing.
+4. When **Analysis complete** appears with the number of extracted stone regions and the DXF save location, open the output folder.
+5. Review the images and DXF as described in Section 5. The reported stone count is the number of regions retained by the application; it may differ from the actual number of stones.
 
-1. 「主要設定」と「セグメンテーションの設定」を確認します。各項目は第4章を参照してください。
-2. 初回は「分割して解析」とクロップレベル1を基本とし、対象の石材サイズに合う投影面積の範囲を指定します。
-3. 「解析を実行」を押します。解析中は入力や設定の操作が無効になります。
-4. 「解析完了」と、抽出石材数・DXFの保存先が表示されたら、出力フォルダーを開きます。
-5. 第5章の順序で画像とDXFを確認します。抽出石材数はアプリが採用した領域数であり、実際の石材数との一致を保証しません。
+A separate run folder is created automatically using the run date and time followed by the OBJ name. A sequential number is added if a folder with the same name already exists. Keep all files from each run together.
 
-　出力先には「実行日時_OBJ名」のフォルダーが自動作成されます。同名の実行フォルダーがある場合は連番が付きます。実行ごとのフォルダーをまとめて保存してください。
+## 4 Parameter settings
 
-## 4 パラメータの設定
+### 4.1 Main settings
 
-### 4.1 主要設定
+Table 1 lists the main controls and their default values. Projected area means the area seen in the frontal view.
 
-　画面上の名称と初期値を表1に示します。投影面積は正面から見た面積です。
+Table 1. Main settings and default values.
 
-表1　主要設定の初期値と役割
-
-| 項目 | 初期値 | 役割 |
+| Setting | Default | Description |
 |---|---|---|
-| 探索グリッド数 | 64 | 各解析画像に配置する探索点の密度。64は基本となる縦64点×横64点の配置を表します。増やすと探索が細かくなる一方、処理負荷が増えます。 |
-| 最小投影面積 | 0.01 m² | この面積より小さい候補を除外します。小さい石材を残す場合は下げます。 |
-| 最大投影面積 | 9 m² | この面積より大きい候補を除外します。大きい石材を扱う場合は上げます。 |
-| クロップレベル | 1 | 1は追加分割なし。2は2×2、3はさらに4×4の追加探索を行います。値を上げると処理時間が増えます。 |
+| Point-grid size | 64 | Controls the density of point prompts in each analysis image. A value of 64 specifies a base grid of 64 × 64 points. Larger values provide denser sampling and increase the processing load. |
+| Minimum projected area (m²) | 0.01 m² | Excludes candidates smaller than this area. Lower it to retain smaller stones. |
+| Maximum projected area (m²) | 9 m² | Excludes candidates larger than this area. Raise it to retain larger stones. |
+| Crop level (1-3) | 1 | Level 1 adds no crops. Level 2 adds a 2 × 2 subdivision; level 3 also adds a 4 × 4 subdivision. Higher levels increase processing time. |
 
+### 4.2 Segmentation settings
 
-### 4.2 セグメンテーションの設定
+Table 2 lists the analysis mode, resolution, and related controls. Increasing the resolution cannot recover detail that is absent from the original textures.
 
-　解析モードや解像度などの設定を表2に示します。解像度を上げるだけで、元のテクスチャにない細部が復元されることはありません。
+Table 2. Segmentation settings and default values.
 
-表2　セグメンテーション設定の初期値と役割
-
-| 項目 | 初期値 | 役割 |
+| Setting | Default | Description |
 |---|---|---|
-| 解析モード | 分割して解析 | 投影画像を正方形の領域に分けて解析します。「全体を1枚で解析」も選択できます。 |
-| 投影画像高さまたは横幅 | 4096 px | 分割モードでは高さ、全体1枚モードでは横幅を指定します。もう一方は対象の縦横比から決まります。 |
-| スコア閾値 | 0.2 | 候補を採用するためのスコアの下限。上げると候補を厳しく絞り、下げると誤抽出も増える場合があります。 |
-| 実行環境 | auto | autoは自動選択、cpuはCPU、gpuはGPUを指定します。 |
+| Analysis mode | Tiled analysis | Processes the frontal projection image in square tiles. Whole-image analysis is also available. |
+| Frontal projection image height (px) / Frontal projection image width (px) | 4096 px | Sets the image height in tiled mode and the image width in whole-image mode. The other dimension is determined by the wall's aspect ratio. |
+| Score threshold (0.001-1) | 0.2 | Sets the minimum score for retaining a candidate. Raising it applies stricter filtering; lowering it may increase false detections. |
+| Execution environment (CPU/GPU) | `auto` | `auto` selects the environment automatically; `cpu` uses the CPU; `gpu` uses the GPU. |
 
-　解像度は32以上の整数、スコア閾値は画面で指定できる0.001～1の範囲で設定します。スコアは実測した正解率ではありません。
+Set the resolution to an integer of at least 32. The score threshold can be set from 0.001 to 1 in the interface. This score is not a measured segmentation accuracy.
 
-### 4.3 二つの解析モード
+### 4.3 Understanding the two analysis modes
 
-　「分割して解析」は、投影画像の高さを基準に正方形の領域を作り、横方向に重ねながら解析します。分割間の重複は処理中に整理されます。横長の壁面を扱う際の基本モードです。
+**Tiled analysis** uses square tiles whose side length equals the projection image height. The tiles overlap horizontally, and duplicate candidates in the overlapping areas are removed during processing. This is the default mode for wide wall surfaces.
 
-　「全体を1枚で解析」は、投影画像全体を一つの入力として解析します。モードを切り替えると、解像度欄は「投影画像横幅 (px)」に変わります。表示中の数値は引き継がれるため、同じ4096でも分割モードと同じ解像度にはなりません。横長の壁面では高さが小さくなり、小さい石材が見えにくくなる場合があります。
+**Whole-image analysis** processes the entire frontal projection image as one input. Switching to this mode changes the resolution field to **Frontal projection image width (px)**. The displayed value is retained, so a value of 4096 does not produce the same image dimensions in both modes. For a wide wall, whole-image mode produces a smaller image height, which may make small stones harder to distinguish.
 
-　クロップレベルは、解析モードによる分割とは別の追加探索です。「全体を1枚で解析」でも、クロップレベルを2以上にするとSAM内部の追加分割を行います。
+The crop level controls additional sampling within SAM, separately from the tiling used by the analysis mode. A crop level of 2 or higher also introduces additional crops in whole-image mode.
 
-## 5 出力結果の確認
+## 5 Review the output
 
-　主な出力を表3に示します。ファイル名の先頭には実行日時が付きます。表中の「OBJ名」は入力ファイル名から拡張子を除いた名称です。
+Table 3 lists the main output files. Filenames are prefixed with the run date and time. In the table, `<OBJ name>` means the input filename without its extension; it is a placeholder, not a literal part of the filename.
 
-表3　主な出力ファイルと用途
+Table 3. Main output files and their uses.
 
-| ファイル名の末尾 | 内容と用途 |
+| Filename suffix or location | Contents and use |
 |---|---|
-| OBJ名_front.png | 正面投影画像。向き、範囲、テクスチャの状態を確認します。 |
-| OBJ名_sam_overlay.png | 最終的にDXFへ採用した領域を重ねた確認画像です。 |
-| OBJ名_boundaries.png | 採用した輪郭を赤線で示した確認画像です。 |
-| dxf_output_OBJ名.dxf | 元のOBJ座標系による閉じた3次元ポリラインです。 |
-| parameters.csv | 入出力先、画面で指定した主要な解析条件を保存します。 |
-| OBJ名_audit.csv | 候補の採用・除外理由や投影面積を確認する記録です。 |
-| 拡張子が.matのファイル | 画像と3次元の対応、抽出領域、輪郭などの処理データです。 |
-| tilesフォルダー内の画像 | 分割解析時の確認画像。分割間の統合・重複除去前の結果です。 |
+| `<OBJ name>_front.png` | Frontal projection image. Check the orientation, coverage, and texture appearance first. |
+| `<OBJ name>_sam_overlay.png` | Preview showing the final regions retained for DXF export. |
+| `<OBJ name>_boundaries.png` | Preview showing the retained boundaries as red lines. |
+| `dxf_output_<OBJ name>.dxf` | Closed three-dimensional polylines in the coordinate system of the input OBJ. |
+| `parameters.csv` | Input and output locations and the main analysis settings specified in the interface. |
+| `<OBJ name>_audit.csv` | Records of candidate acceptance and rejection, including reasons and projected areas. |
+| Files with the `.mat` extension | Processing data, including image-to-mesh correspondence information, extracted regions, and boundaries. |
+| Images in the `tiles` folder | Previews for tiled analysis, before results from individual tiles are combined and duplicates are removed. |
 
-　CSVはExcelなどで確認できます。従来版の設定用Excelファイルとは形式が異なります。MATは通常の結果閲覧で開く必要はありません。
+CSV files can be opened in Excel or similar software. They use a different format from the configuration Excel files used in earlier versions. You do not need to open the MAT files for routine review of the results.
 
-## 6 困ったときの確認と調整
+## 6 Troubleshooting and adjustments
 
-### 6.1 入力エラーで開始できない
+### 6.1 Analysis does not start because of an input error
 
-- OBJが見つからない場合：選択フォルダーの直下にOBJがあるか確認します。
-- OBJが複数ある場合：処理する1件だけを残した入力フォルダーを用意します。
-- 多角形のエラーが出る場合：メッシュ編集ソフトで三角形化して再出力します。
-- モデルが見つからない場合：配布ファイルの欠落を確認し、配布元へ問い合わせます。
+- **No OBJ file found:** Check that the OBJ is directly inside the selected input folder.
+- **Multiple OBJ files found:** Prepare an input folder containing only the model you want to process.
+- **Polygon error:** Triangulate the mesh in mesh-editing software and export it again.
+- **Segmentation model not found:** Check for missing application files and contact the distributor.
 
-### 6.2 向きや表示範囲がおかしい
+### 6.2 The orientation or projected extent looks wrong
 
-　壁面以外の形状、別方向の面、Z軸の向き、面の表裏を確認します。対象壁面だけに切り出し直したうえで、再解析してください。GUIから投影方向を手動指定することはできません。
+Check for geometry outside the target wall, surfaces facing other directions, an incorrect Z-axis orientation, and reversed faces. Crop the model to the target wall surface and run the analysis again. The GUI does not provide a control for manually setting the projection direction.
 
-### 6.3 石材の見落としや誤抽出が多い
+### 6.3 Too many stones are missed or incorrectly extracted
 
-1. まず投影画像の見え方と、座標単位がメートルであることを確認します。
-2. 小さい石材が抜ける場合は最小投影面積、大きい石材が抜ける場合は最大投影面積を確認します。
-3. 見落としが残る場合は、探索グリッド数、解像度、クロップレベルを一つずつ調整します。
-4. 誤抽出が多い場合は、入力モデルの不要部分を除き、面積条件やスコア閾値を調整します。
-5. 各実行の画像とparameters.csvを比較し、対象に適した条件を選びます。
+1. Check the frontal projection image and confirm that the model's coordinate units are metres.
+2. If small stones are missing, check the minimum projected area. If large stones are missing, check the maximum projected area.
+3. If stones are still missed, adjust the point-grid size, image resolution, and crop level one at a time.
+4. If there are many false detections, remove unrelated geometry from the input model and adjust the area limits or score threshold.
+5. Compare the preview images and `parameters.csv` from each run to choose settings suited to your wall.
 
-　面積やスコアだけでは分割・結合の誤りを必ず解消できません。最終的に必要な境界を、人が点検・修正してください。
+Area limits and score thresholds may not resolve cases where one stone is split into several regions or several stones are grouped into one. Inspect the final boundaries and correct them manually as needed.
 
-### 6.4 メモリ不足やGPUエラーが出る
+### 6.4 Out-of-memory or GPU errors
 
-　探索グリッド数（グリッドサイズ）を64などの大きい値に設定している場合は、32などの小さい値に下げ、クロップレベルを1にして試します。GPU関連のエラーでは、実行環境をcpuに変更して確認できます。ただし、CPUでもモデル規模に応じたメモリが必要です。処理時間は環境と条件によって変わるため、表示が変わらない時間だけで失敗とは判断しないでください。
+If the point-grid size is set to a large value such as 64, try lowering it to 32 and setting the crop level to 1. For GPU errors, try setting the execution environment to `cpu`. CPU processing still requires enough memory for the model. Processing time varies with the system and settings, so a period without a visible update does not necessarily mean that processing has failed.
 
+## Version history
 
-## バージョン履歴
-
-- 2026年10月30日：バージョン2.0を作成。
-
-
+- 30 October 2026: Version 2.0 created.
